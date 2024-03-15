@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # This script audits DNS records for specified subdomains of a domain.
+
 # Function to display subdomain information
 display_subdomain_info() {
     local subdomain=$1
@@ -16,7 +17,12 @@ subdomain=$2
 if [ -z "$subdomain" ]; then
     subdomains=("www" "lb-01" "web-01" "web-02")
     for sub in "${subdomains[@]}"; do
-        display_subdomain_info $sub $domain
+        if [ "$sub" == "www" ]; then
+            destination=$(dig lb-01.$domain | awk '/ANSWER SECTION/ {getline; print $5}')
+            echo "The subdomain $sub points to your lb-01 server IP: $destination"
+        else
+            display_subdomain_info $sub $domain
+        fi
     done
 else
     display_subdomain_info $subdomain $domain
