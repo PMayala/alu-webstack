@@ -1,28 +1,51 @@
 #!/usr/bin/env bash
 # This script audits DNS records for specified subdomains of a domain.
 
-# Function to display subdomain information
-display_subdomain_info() {
-    local subdomain=$1
-    local domain=$2
-    local record_type=$(dig $subdomain.$domain | awk '/ANSWER SECTION/ {getline; print $4}')
-    local destination=$(dig $subdomain.$domain | awk '/ANSWER SECTION/ {getline; print $5}')
-    echo "The subdomain $subdomain is a $record_type record and points to $destination"
+function get_record_type() {
+    local domain=$1
+    local subdomain=$2
+    local record_type
+
+    if dig +short "$subdomain.$domain" | grep -q '^[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}$'; then
+        record_type="A"
+    elif dig +short "$subdomain.$domain" | grep -q '^[a-zA-Z0-9]\{1,\}\.[a-zA-Z0-9]\{1,\}\.[a-zA-Z0-9]\{1,\}$'; then
+        record_type="CNAME"
+    else
+        echo "Error: Unknown record type for subdomain $subdomain"
+        exit 1
+    fi
+
+    echo "$record_type"
 }
 
-# Main script
-domain=$1
-subdomain=$2
+function get_destination() {
+    local domain=$1
+    local subdomain=$2
+    local record_type=$3
 
-if [ -z "$subdomain" ]; then
-    # Define subdomains with their corresponding IPs
-    subdomains=("www" "lb-01" "web-01" "web-02")
-    ip_map=("18.208.223.205" "18.208.223.205" "54.83.87.119" "18.204.231.167")
-    
-    # Display subdomain information
-    for ((i=0; i<${#subdomains[@]}; i++)); do
-        echo "The subdomain ${subdomains[$i]} points to ${ip_map[$i]}"
+    if [ "$record_type" == "A" ]; then
+        dig +short "$subdomain.$domain"
+    elif [ "$record_type" == "CNAME" ]; then
+        dig +short "$subdomain.$domain" | awk -F'.' '{print $NF}'
+    else
+        echo "Error: Unknown record type $record_type"
+        exit 1
+    fi
+}
+
+function audit_subdomain() {
+    local domain=$1
+    local subdomain=$2
+
+    if [ -z "$subdomain" ]; then
+        subdomains=("www" "lb-01" "web-01" "web-02")
+    else
+        subdomains=("$subdomain")
+    fi
+
+    for subdomain in "${subdomains[@]}"; do
+        record_type=$(get_record_type "$domain" "$subdomain")
+        destination=$(get_destination "$domain" "$subdomain" "$record_type")
+        echo "The subdomain $subdomain is a $record_type record and points to $destination"
     done
-else
-    display_subdomain_info $subdomain $domain
-fi
+}
