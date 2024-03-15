@@ -1,24 +1,21 @@
 #!/usr/bin/env bash
-# Configure your domain zone so that the subdomain
+# This script audits DNS records for specified subdomains of a domain.
 
-function domain(){
- if [ $# -lt 2 ]; then
-    subdomain=("www" "lb-01" "web-01" "web-02")
-    for item in "${subdomain[@]}";
-    do
-	output=$(dig $item.$1 | grep -A1 'ANSWER SECTION:')
-	record_type=$(echo "$output" | awk 'NR==2 {print $4}')
-	destination=$(echo "$output" | awk 'NR==2 {print $5}')
-	echo "The subdomain $item is a $record_type record and points to $destination"
+function audit_subdomain {
+    local domain="$1"
+    local subdomain="$2"
+
+    if [ -z "$subdomain" ]; then
+        subdomains=("www" "lb-01" "web-01" "web-02")
+    else
+        subdomains=("$subdomain")
+    fi
+
+    for sub in "${subdomains[@]}"; do
+        record_type=$(dig "$sub.$domain" | awk '/ANSWER SECTION/ { getline; print $4 }')
+        destination=$(dig "$sub.$domain" | awk '/ANSWER SECTION/ { getline; print $5 }')
+        echo "The subdomain $sub is a $record_type record and points to $destination"
     done
- else
-    output=$(dig $2.$1 | grep -A1 'ANSWER SECTION:' )
-    sub_domain=$2
-    record_type=$(echo "$output" | awk 'NR==2 {print $4}')
-    destination=$(echo "$output" | awk 'NR==2 {print $5}')
-    echo "The subdomain $sub_domain is a $record_type record and points to $destination"
- fi
 }
 
-# Call the function with arguments
-domain "$@"
+audit_subdomain "$1" "$2"
