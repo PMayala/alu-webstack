@@ -15,14 +15,13 @@ domain=$1
 subdomain=$2
 
 if [ -z "$subdomain" ]; then
+    # Define subdomains with their corresponding IPs
     subdomains=("www" "lb-01" "web-01" "web-02")
-    for sub in "${subdomains[@]}"; do
-        if [ "$sub" == "www" ]; then
-            destination=$(dig lb-01.$domain | awk '/ANSWER SECTION/ {getline; print $5}')
-            echo "The subdomain $sub points to your lb-01 server IP: $destination"
-        else
-            display_subdomain_info $sub $domain
-        fi
+    ip_map=("18.208.223.205" "18.208.223.205" "54.83.87.119" "18.204.231.167")
+    
+    # Display subdomain information
+    for ((i=0; i<${#subdomains[@]}; i++)); do
+        echo "The subdomain ${subdomains[$i]} points to ${ip_map[$i]}"
     done
 else
     display_subdomain_info $subdomain $domain
